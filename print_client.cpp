@@ -16,6 +16,7 @@ int main()
 	int value = connect(sockfd, (struct sockaddr*)&clientaddr, sizeof(clientaddr));
 	QUIT_IF_FAIL(value);
 
-	value = write(sockfd, "ABCdefg", 8);
+	const char* essay = "Remeber Red, hope is a good thing, maybe the best of things, and no good thing ever dies.\n";
+	value = write(sockfd, essay, strlen(essay));
 	return 0;
 }

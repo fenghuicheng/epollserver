@@ -26,7 +26,8 @@ void socket_setup()
 	value = listen(listenfd, 1024);
 	QUIT_IF_FAIL(value);
 }
-/*wait for working process terminate.*/
+
+/*wait for working process's termination.*/
 void sig_chld(int signo)
 {
 	pid_t pid = 0;
@@ -39,6 +40,7 @@ void sig_chld(int signo)
 	
 	return;
 }
+
 /*serve the client connected by socket `conn_fd`*/
 void work(int conn_fd)
 {
@@ -50,7 +52,17 @@ void work(int conn_fd)
 	{
 		printf("conn_fd = %d\n", conn_fd);
 	}
+	char buffer[100];
+	int count = 0;
+	while((count = read(conn_fd, &buffer, sizeof(buffer))) > 0)
+	{
+		printf("packsize = %d;\n", count);
+		buffer[count] = '\0';
+		printf("%s\n", buffer);
+	}
+	exit(0);
 }
+
 /*initialize the epoll family.*/
 void init()
 {
@@ -111,12 +123,7 @@ int main()
 		if ((pid = fork()) == 0)
 		{
 			close(listenfd);
-			work(event.data.fd);
-			char buffer[100];
-			bzero(buffer, 100);
-			read(connectfd, &buffer, 8);
-			printf("%s\n", buffer);
-			exit(0);
+			work(connectfd);
 		}
 
 		close(connectfd);

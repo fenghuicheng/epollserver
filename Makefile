@@ -1,7 +1,8 @@
 .PHONY : all
+CXXFLAGS:=${CXXFLAGS} -g3
 all : server client
-server: echo_server.cpp include.h
-	gcc -o $@ -g3 echo_server.cpp
-client: echo_client.cpp include.h
-	gcc -o $@ -g3 echo_client.cpp
+server: print_server.cpp include.h
+	gcc -o $@ ${CXXFLAGS} $<
+client: print_client.cpp include.h
+	gcc -o $@ ${CXXFLAGS} $<
 
