@@ -23,7 +23,7 @@ void socket_setup()
 	value = bind(listenfd, (SA*)&homeaddr, sizeof(homeaddr));
 	QUIT_IF_FAIL(value);
 
-	value = listen(listenfd, 1024);
+	value = listen(listenfd, SOMAXCONN);
 	QUIT_IF_FAIL(value);
 }
 
@@ -32,12 +32,10 @@ void sig_chld(int signo)
 {
 	pid_t pid = 0;
 	int stat = 0;
-	while((pid = waitpid(-1, &stat, WNOHANG)) > 0)
-	{
-		QUIT_IF_FAIL(pid);
-		printf("child procss %d exit\n", pid);
-	}
 	
+	while((pid = waitpid(-1, &stat, WNOHANG)) > 0)
+		printf("child procss %d exit\n", pid);
+		
 	return;
 }
 
@@ -45,13 +43,10 @@ void sig_chld(int signo)
 void work(int conn_fd)
 {
 	if (conn_fd == 0)
-	{
 		return;
-	}
-	else
-	{
-		printf("conn_fd = %d\n", conn_fd);
-	}
+		
+	printf("conn_fd = %d\n", conn_fd);
+	
 	char buffer[100];
 	int count = 0;
 	while((count = read(conn_fd, &buffer, sizeof(buffer))) > 0)
