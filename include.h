@@ -32,4 +32,10 @@ if (val < 0) {\
 	}\
 }while(0);
 
+#define MAXEPOLLFD 10
+#define BUFFSIZE 128
+
+#define ARRAYCOUNT(array) (sizeof(array) / sizeof(array[0]))
+
+
 #endif//SOCKET_TEST_INCLUDE 

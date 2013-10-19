@@ -11,6 +11,7 @@ void socket_setup()
 {
 	typedef struct sockaddr SA;
 	int value = 0;
+	socklen_t length = 0;
 	listenfd = socket(AF_INET, SOCK_STREAM, 0);
 	QUIT_IF_FAIL(listenfd);
 
@@ -19,6 +20,11 @@ void socket_setup()
 	homeaddr.sin_family = AF_INET;
 	homeaddr.sin_port = htons(2000);
 	inet_pton(AF_INET, "127.0.0.1", &homeaddr.sin_addr);
+
+	value = 1;
+	length = sizeof(value);
+	value = setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, (void*)&value, length);
+	QUIT_IF_FAIL(listenfd);
 
 	value = bind(listenfd, (SA*)&homeaddr, sizeof(homeaddr));
 	QUIT_IF_FAIL(value);
@@ -47,15 +53,22 @@ void work(int conn_fd)
 		
 	printf("conn_fd = %d\n", conn_fd);
 	
-	char buffer[100];
+	char buffer[BUFFSIZE] = {0};
 	int count = 0;
+again:
 	while((count = read(conn_fd, &buffer, sizeof(buffer))) > 0)
 	{
 		printf("packsize = %d;\n", count);
 		buffer[count] = '\0';
 		printf("%s\n", buffer);
+		write(conn_fd, &buffer, count);
 	}
-	exit(0);
+	if (count < 0 && errno == SIGINT)
+		goto again;
+
+	int value = epoll_ctl(epollfd, EPOLL_CTL_DEL, conn_fd, NULL);
+	QUIT_IF_FAIL(value);
+	close(conn_fd);
 }
 
 /*initialize the epoll family.*/
@@ -68,14 +81,18 @@ void init()
 	bzero(&event, sizeof(event));
 	event.events = EPOLLIN;
 	event.data.fd = listenfd;
+
 	int value = epoll_ctl(epollfd, EPOLL_CTL_ADD, listenfd, &event);
 	QUIT_IF_FAIL(value);
-
+	
+	/* process the SIGCHLD signal for `fork` model. */
+	/*
 	struct sigaction act, oldact; 
 	sigemptyset(&act.sa_mask);
 	act.sa_flags = 0;
 	act.sa_handler = &sig_chld;
 	sigaction(SIGCHLD, &act, &oldact);
+	*/
 }
 
 /*close employed file descriptors.*/
@@ -95,34 +112,49 @@ int main()
 	pid_t pid = 0;
 	socket_setup();
 	init();
-	struct epoll_event event;
+	struct epoll_event event[MAXEPOLLFD];
 
 	while(1)
 	{
 		struct sockaddr_in clientsock;
 		socklen_t clientlen = 0;
 
-		bzero(&event, sizeof(event));
+		int value = epoll_wait(epollfd, (epoll_event*)&event, ARRAYCOUNT(event), -1);
 
-		int value = epoll_wait(epollfd, &event, 1, -1);
-		printf("one shoot for epoll_wait\n");
 		if (value < 0 && errno == EINTR)
 			continue;
 		else if(value < 0)
 			QUIT_IF_FAIL(value);
 
-		int connectfd = accept(listenfd, NULL, NULL);
-		QUIT_IF_FAIL(connectfd);
-		printf("connet with %d\n", connectfd);
-		
-		if ((pid = fork()) == 0)
+		for (int i = 0; i < value; i++)
 		{
-			close(listenfd);
-			work(connectfd);
-		}
+			if (event[i].data.fd == listenfd)
+			{
+				int connectfd = accept(listenfd, NULL, NULL);
+				if (connectfd < 0)
+				{
+					if (errno != EINTR)
+						close(connectfd);
+					perror("print_server connect");
+					continue;
+				}
+				printf("connet with %d\n", connectfd);
+				
+				struct epoll_event newevent;
+				bzero(&newevent, sizeof(newevent));
+				newevent.events = EPOLLIN;
+				newevent.data.fd = connectfd;
 
-		close(connectfd);
+				value = epoll_ctl(epollfd, EPOLL_CTL_ADD, connectfd, &newevent);
+				QUIT_IF_FAIL(value);
+			} 
+			else
+			{
+				work(event[i].data.fd);
+			}
+		}
 	}
+
 	clean();
 	return 0;
 }

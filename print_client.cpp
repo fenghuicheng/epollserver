@@ -18,5 +18,12 @@ int main()
 
 	const char* essay = "Remeber Red, hope is a good thing, maybe the best of things, and no good thing ever dies.\n";
 	value = write(sockfd, essay, strlen(essay));
+	shutdown(sockfd, SHUT_WR);
+	char buffer[BUFFSIZE];
+	write(fileno(stdout), "echo back : ", 13);
+	while((value = read(sockfd, buffer, sizeof(buffer))) > 0)
+		write(fileno(stdout), buffer, value);
+
+	fflush(stdout);
 	return 0;
 }
