@@ -6,3 +6,7 @@ server: print_server.cpp include.h
 client: print_client.cpp include.h
 	gcc -o $@ ${CXXFLAGS} $<
 
+.PHONY:clean
+clean:
+	@rm -f server client
+	@rm -f *~

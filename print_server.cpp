@@ -120,10 +120,11 @@ int main()
 		socklen_t clientlen = 0;
 
 		int value = epoll_wait(epollfd, (epoll_event*)&event, ARRAYCOUNT(event), -1);
-
+#ifndef SA_RESTART
 		if (value < 0 && errno == EINTR)
 			continue;
 		else if(value < 0)
+#endif
 			QUIT_IF_FAIL(value);
 
 		for (int i = 0; i < value; i++)
@@ -133,8 +134,11 @@ int main()
 				int connectfd = accept(listenfd, NULL, NULL);
 				if (connectfd < 0)
 				{
+#ifndef SA_RESTART
 					if (errno != EINTR)
+#endif
 						close(connectfd);
+
 					perror("print_server connect");
 					continue;
 				}
